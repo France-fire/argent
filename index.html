@@ -1,1 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gagne de l'argent - Pub & Retrait Djamo</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f4f4; text-align: center; padding: 20px; }
+        .card { background: white; padding: 20px; margin: 20px auto; width: 300px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        button { padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #45a049; }
+        input { padding: 10px; width: 90%; margin: 10px 0; }
+        .admin { background: #ffc107; color: black; margin-bottom: 10px; }
+        .delete-btn { background: red; margin-top: 5px; }
+    </style>
+</head>
+<body><h1>Bienvenue sur PubCash</h1>
 
+<div id="auth">
+    <div class="card">
+        <h4>Connexion</h4>
+        <input type="text" id="username" placeholder="Nom d'utilisateur">
+        <button onclick="login()">Se connecter</button>
+    </div>
+</div>
+
+<div id="app" style="display:none;">
+    <h3>Bonjour, <span id="userDisplay"></span>!</h3>
+    <h3>Votre solde: <span id="balance">0</span> FCFA</h3>
+
+    <div class="card">
+        <h4>Regarder une Pub (10000 FCFA)</h4>
+        <iframe width="250" height="150" src="https://www.youtube.com/embed/dQw4w9WgXcQ" frameborder="0" allowfullscreen></iframe>
+        <br><br>
+        <button onclick="watchAd()">Confirmer que vous avez regardé</button>
+    </div>
+
+    <div class="card">
+        <h4>Retirer via Djamo</h4>
+        <button onclick="requestWithdraw()">Demander Retrait</button>
+    </div>
+
+    <button onclick="logout()">Déconnexion</button>
+</div>
+
+<div id="adminPanel" style="display:none;">
+    <h2>Panneau Admin</h2>
+    <div id="withdrawList"></div>
+    <button onclick="clearRequests()">Tout Supprimer</button>
+    <br><br>
+    <button onclick="logout()">Déconnexion Admin</button>
+</div>
+
+<script>
+    let balance = 0;
+    let currentUser = "";
+
+    function login() {
+        currentUser = document.getElementById('username').value;
+        if (currentUser === "") {
+            alert("Veuillez entrer un nom d'utilisateur.");
+            return;
+        }
+
+        if (currentUser === "admin") {
+            showAdminPanel();
+            return;
+        }
+
+        balance = localStorage.getItem(currentUser + "_balance") || 0;
+        document.getElementById('balance').innerText = balance;
+        document.getElementById('userDisplay').innerText = currentUser;
+
+        document.getElementById('auth').style.display = "none";
+        document.getElementById('app').style.display = "block";
+    }
+
+    function watchAd() {
+        alert("Merci d'avoir regardé la pub !");
+        balance = parseInt(balance) + 10000;
+        document.getElementById('balance').innerText = balance;
+        localStorage.setItem(currentUser + "_balance", balance);
+    }
+
+    function requestWithdraw() {
+        if (balance >= 10000) {
+            let phone = prompt("Entrez votre numéro Djamo:");
+            let request = currentUser + ": " + balance + " FCFA -> " + phone;
+
+            let existing = localStorage.getItem("withdraw_requests") || "";
+            existing += request + "|";
+            localStorage.setItem("withdraw_requests", existing);
+
+            alert("Demande de retrait envoyée pour " + balance + " FCFA sur le numéro " + phone);
+            balance = 0;
+            document.getElementById('balance').innerText = balance;
+            localStorage.setItem(currentUser + "_balance", balance);
+        } else {
+            alert("Solde insuffisant. Minimum 10000 FCFA pour retirer.");
+        }
+    }
+
+    function logout() {
+        currentUser = "";
+        balance = 0;
+        document.getElementById('auth').style.display = "block";
+        document.getElementById('app').style.display = "none";
+        document.getElementById('adminPanel').style.display = "none";
+    }
+
+    function showAdminPanel() {
+        document.getElementById('auth').style.display = "none";
+        document.getElementById('adminPanel').style.display = "block";
+
+        loadRequests();
+    }
+
+    function loadRequests() {
+        let requests = localStorage.getItem("withdraw_requests") || "";
+        let list = requests.split('|').filter(r => r);
+        let html = "";
+
+        list.forEach((req, index) => {
+            html += `<div class='card admin'>${req}<br><button class='delete-btn' onclick='deleteRequest(${index})'>Supprimer</button></div>`;
+        });
+
+        document.getElementById('withdrawList').innerHTML = html;
+    }
+
+    function deleteRequest(index) {
+        let requests = localStorage.getItem("withdraw_requests") || "";
+        let list = requests.split('|').filter(r => r);
+
+        list.splice(index, 1);
+        let updated = list.join('|') + (list.length > 0 ? '|' : '');
+        localStorage.setItem("withdraw_requests", updated);
+
+        loadRequests();
+    }
+
+    function clearRequests() {
+        if (confirm("Supprimer toutes les demandes ?")) {
+            localStorage.removeItem("withdraw_requests");
+            loadRequests();
+        }
+    }
+</script>
+
+</body>
+</html>
