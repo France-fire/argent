@@ -1,0 +1,145 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PubCash - Local</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background: #f0f0f0; padding: 20px; }
+        .card { background: #fff; padding: 20px; margin: 20px auto; max-width: 400px; border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+        input, button { padding: 10px; width: 90%; margin: 10px 0; border-radius: 5px; border: 1px solid #ccc; }
+        button { background-color: #28a745; color: white; font-weight: bold; cursor: pointer; border: none; }
+        button:hover { background-color: #218838; }
+        .admin-block { text-align: left; background: #fff3cd; padding: 10px; margin-top: 10px; border-radius: 8px; }
+    </style>
+</head>
+<body>
+
+<h1>PubCash Local (Sans Google Sheets)</h1>
+
+<div class="card" id="loginCard">
+    <h3>Connexion</h3>
+    <input type="text" id="username" placeholder="Nom d'utilisateur">
+    <button onclick="login()">Se connecter</button>
+</div>
+
+<div class="card" id="appCard" style="display:none;">
+    <h3>Bienvenue, <span id="userDisplay"></span></h3>
+    <h4>Solde : <span id="balance">0</span> FCFA</h4>
+    <div>
+        <h4>Regarder une pub</h4>
+        <iframe width="300" height="170" src="https://www.youtube.com/embed/dQw4w9WgXcQ" frameborder="0" allowfullscreen></iframe><br>
+        <button onclick="watchAd()">Confirmer</button>
+    </div>
+    <div>
+        <h4>Retrait via Djamo</h4>
+        <button onclick="requestWithdraw()">Demander un retrait</button>
+    </div>
+    <br>
+    <button onclick="logout()">Déconnexion</button>
+</div>
+
+<div class="card" id="adminPanel" style="display:none;">
+    <h2>Panneau Admin</h2>
+    <div id="withdrawList">Chargement des demandes...</div>
+    <br>
+    <button onclick="logout()">Déconnexion</button>
+</div>
+
+<script>
+let currentUser = "";
+
+function saveUsers(users) {
+    localStorage.setItem("pubcash_users", JSON.stringify(users));
+}
+
+function getUsers() {
+    return JSON.parse(localStorage.getItem("pubcash_users")) || [];
+}
+
+function login() {
+    const input = document.getElementById("username");
+    const username = input.value.trim().toLowerCase();
+    if (!username) return alert("Entre un nom d'utilisateur.");
+
+    const users = getUsers();
+    let user = users.find(u => u.username === username);
+
+    if (!user) {
+        user = { username, balance: 0, phone: "" };
+        users.push(user);
+        saveUsers(users);
+    }
+
+    currentUser = username;
+    document.getElementById("userDisplay").innerText = username;
+
+    if (username === "admin") {
+        showAdminPanel();
+    } else {
+        document.getElementById("balance").innerText = user.balance;
+        document.getElementById("loginCard").style.display = "none";
+        document.getElementById("appCard").style.display = "block";
+    }
+}
+
+function watchAd() {
+    const users = getUsers();
+    const user = users.find(u => u.username === currentUser);
+    user.balance += 10000;
+    saveUsers(users);
+    document.getElementById("balance").innerText = user.balance;
+    alert("Merci d’avoir regardé la pub !");
+}
+
+function requestWithdraw() {
+    const phone = prompt("Entrez votre numéro Djamo :");
+    if (!phone) return;
+
+    const users = getUsers();
+    const user = users.find(u => u.username === currentUser);
+
+    if (user.balance < 10000) return alert("Montant minimum : 10 000 FCFA");
+    user.phone = phone;
+    saveUsers(users);
+    alert("Demande envoyée !");
+}
+
+function showAdminPanel() {
+    document.getElementById("loginCard").style.display = "none";
+    document.getElementById("adminPanel").style.display = "block";
+
+    const users = getUsers().filter(u => u.phone && u.phone !== "");
+    const list = document.getElementById("withdrawList");
+
+    if (users.length === 0) {
+        list.innerHTML = "Aucune demande pour l’instant.";
+        return;
+    }
+
+    list.innerHTML = users.map(u => `
+        <div class="admin-block">
+            <strong>Nom:</strong> ${u.username}<br>
+            <strong>Numéro:</strong> ${u.phone}<br>
+            <strong>Montant:</strong> ${u.balance} FCFA<br>
+            <button onclick="accept('${u.username}')">✔ Accepter</button>
+        </div>
+    `).join('');
+}
+
+function accept(username) {
+    if (!confirm("Confirmer le retrait pour " + username + "?")) return;
+    const users = getUsers();
+    const user = users.find(u => u.username === username);
+    user.phone = "";
+    user.balance = 0;
+    saveUsers(users);
+    showAdminPanel();
+}
+
+function logout() {
+    location.reload();
+}
+</script>
+
+</body>
+</html>
